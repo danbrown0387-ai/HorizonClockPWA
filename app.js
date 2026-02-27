@@ -51,4 +51,41 @@ function draw() {
 
   // Horizon line (3–9)
   ctx.beginPath();
-  ctx.moveTo(centerX - radius, centerY
+  ctx.moveTo(centerX - radius, centerY);
+  ctx.lineTo(centerX + radius, centerY);
+  ctx.strokeStyle = "#888";
+  ctx.stroke();
+
+  let sunAngle = getSunAngle();
+  let moonAngle = getMoonAngle();
+
+  if (orientationMode === "body") {
+    sunAngle -= compassHeading;
+    moonAngle -= compassHeading;
+  }
+
+  drawHand(centerX, centerY, radius, sunAngle, "orange", 6);
+  drawHand(centerX, centerY, radius, moonAngle, "lightblue", 4);
+
+  requestAnimationFrame(draw);
+}
+
+function drawHand(cx, cy, radius, angle, color, width) {
+  const rad = (angle - 90) * (Math.PI / 180);
+  const x = cx + radius * Math.cos(rad);
+  const y = cy + radius * Math.sin(rad);
+
+  ctx.beginPath();
+  ctx.moveTo(cx, cy);
+  ctx.lineTo(x, y);
+  ctx.strokeStyle = color;
+  ctx.lineWidth = width;
+  ctx.stroke();
+}
+
+draw();
+
+// Register Service Worker
+if ("serviceWorker" in navigator) {
+  navigator.serviceWorker.register("service-worker.js");
+}
