@@ -1,1 +1,26 @@
-<!DOCTYPE html><html><head><title>Horizon Clock</title></head><body>Horizon Clock PWA</body></html>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Horizon Clock</title>
+
+  <link rel="manifest" href="manifest.json" />
+  <link rel="stylesheet" href="style.css" />
+
+  <meta name="theme-color" content="#000000" />
+</head>
+
+<body>
+  <div class="clock-container">
+    <canvas id="clockCanvas"></canvas>
+
+    <div class="controls">
+      <button onclick="toggleMode()">Toggle Orientation</button>
+      <button onclick="requestCompass()">Enable Compass</button>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
