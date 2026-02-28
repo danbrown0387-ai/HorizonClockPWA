@@ -1,9 +1,14 @@
+importScripts('https://cdnjs.cloudflare.com/ajax/libs/suncalc/1.9.0/suncalc.min.js');
+
 const canvas = document.getElementById("clockCanvas");
 const ctx = canvas.getContext("2d");
 
 let orientationMode = "earth";
 let compassHeading = 0;
+let userLat = 0;
+let userLon = 0;
 
+// Resize canvas
 function resizeCanvas() {
   canvas.width = canvas.offsetWidth;
   canvas.height = canvas.offsetHeight;
@@ -11,10 +16,12 @@ function resizeCanvas() {
 resizeCanvas();
 window.addEventListener("resize", resizeCanvas);
 
+// Toggle orientation
 function toggleMode() {
   orientationMode = orientationMode === "earth" ? "body" : "earth";
 }
 
+// Compass
 function requestCompass() {
   if (typeof DeviceOrientationEvent !== "undefined") {
     window.addEventListener("deviceorientation", (event) => {
@@ -23,18 +30,33 @@ function requestCompass() {
   }
 }
 
-function getSunAngle() {
-  const now = new Date();
-  const hours = now.getHours() + now.getMinutes() / 60;
-  return (hours / 24) * 360;
+// Get user location
+if (navigator.geolocation) {
+  navigator.geolocation.getCurrentPosition((pos) => {
+    userLat = pos.coords.latitude;
+    userLon = pos.coords.longitude;
+  });
 }
 
-function getMoonAngle() {
+// Compute Sun & Moon angles
+function getSunMoonAngles() {
   const now = new Date();
-  const dayOfMonth = now.getDate();
-  return (dayOfMonth / 29.5) * 360;
+  const sunPos = SunCalc.getPosition(now, userLat, userLon);
+  const moonPos = SunCalc.getMoonPosition(now, userLat, userLon);
+
+  // Convert azimuth (-π..π) to degrees (0..360) for canvas
+  let sunAngle = ((sunPos.azimuth * 180/Math.PI) + 180) % 360;
+  let moonAngle = ((moonPos.azimuth * 180/Math.PI) + 180) % 360;
+
+  if (orientationMode === "body") {
+    sunAngle -= compassHeading;
+    moonAngle -= compassHeading;
+  }
+
+  return { sunAngle, moonAngle };
 }
 
+// Draw function
 function draw() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
@@ -42,27 +64,21 @@ function draw() {
   const centerY = canvas.height / 2;
   const radius = canvas.width / 2 - 10;
 
-  // Draw outer circle
+  // Outer circle
   ctx.beginPath();
   ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
   ctx.strokeStyle = "#555";
   ctx.lineWidth = 2;
   ctx.stroke();
 
-  // Horizon line (3–9)
+  // Horizon line
   ctx.beginPath();
   ctx.moveTo(centerX - radius, centerY);
   ctx.lineTo(centerX + radius, centerY);
   ctx.strokeStyle = "#888";
   ctx.stroke();
 
-  let sunAngle = getSunAngle();
-  let moonAngle = getMoonAngle();
-
-  if (orientationMode === "body") {
-    sunAngle -= compassHeading;
-    moonAngle -= compassHeading;
-  }
+  const { sunAngle, moonAngle } = getSunMoonAngles();
 
   drawHand(centerX, centerY, radius, sunAngle, "orange", 6);
   drawHand(centerX, centerY, radius, moonAngle, "lightblue", 4);
@@ -70,6 +86,7 @@ function draw() {
   requestAnimationFrame(draw);
 }
 
+// Draw hand
 function drawHand(cx, cy, radius, angle, color, width) {
   const rad = (angle - 90) * (Math.PI / 180);
   const x = cx + radius * Math.cos(rad);
@@ -83,9 +100,13 @@ function drawHand(cx, cy, radius, angle, color, width) {
   ctx.stroke();
 }
 
-draw();
+// Start animation
+window.onload = () => {
+  draw();
+  requestCompass();
+};
 
-// Register Service Worker
+// Service Worker
 if ("serviceWorker" in navigator) {
   navigator.serviceWorker.register("service-worker.js");
 }
