@@ -5,6 +5,7 @@ let orientationMode = "earth";
 let compassHeading = 0;
 let userLat = 0;
 let userLon = 0;
+let horizonFlipped = false; // New: track horizon flip
 
 // Resize canvas
 function resizeCanvas() {
@@ -14,9 +15,14 @@ function resizeCanvas() {
 resizeCanvas();
 window.addEventListener("resize", resizeCanvas);
 
-// Toggle orientation
+// Toggle orientation (Earth/body)
 function toggleMode() {
   orientationMode = orientationMode === "earth" ? "body" : "earth";
+}
+
+// Flip horizon
+function flipHorizon() {
+  horizonFlipped = !horizonFlipped;
 }
 
 // Compass
@@ -68,8 +74,9 @@ function draw() {
   ctx.lineWidth = 2;
   ctx.stroke();
 
-  // Horizon line
+  // Horizon line (reversible)
   ctx.beginPath();
+  const horizonY = centerY + (horizonFlipped ? -0 : 0); // Can adjust if you want vertical flip
   ctx.moveTo(centerX - radius, centerY);
   ctx.lineTo(centerX + radius, centerY);
   ctx.strokeStyle = "#888";
@@ -97,10 +104,23 @@ function drawHand(cx, cy, radius, angle, color, width) {
   ctx.stroke();
 }
 
-// Start animation
+// Start animation after page load
 window.onload = () => {
   draw();
   requestCompass();
+
+  // Make buttons active
+  const toggleBtn = document.querySelector("button:nth-child(1)");
+  toggleBtn.addEventListener("click", toggleMode);
+
+  const compassBtn = document.querySelector("button:nth-child(2)");
+  compassBtn.addEventListener("click", requestCompass);
+
+  // Add horizon flip button dynamically
+  const flipBtn = document.createElement("button");
+  flipBtn.textContent = "Flip Horizon";
+  flipBtn.addEventListener("click", flipHorizon);
+  document.querySelector(".controls").appendChild(flipBtn);
 };
 
 // Service Worker
