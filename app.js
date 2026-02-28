@@ -1,5 +1,3 @@
-importScripts('https://cdnjs.cloudflare.com/ajax/libs/suncalc/1.9.0/suncalc.min.js');
-
 const canvas = document.getElementById("clockCanvas");
 const ctx = canvas.getContext("2d");
 
@@ -44,7 +42,6 @@ function getSunMoonAngles() {
   const sunPos = SunCalc.getPosition(now, userLat, userLon);
   const moonPos = SunCalc.getMoonPosition(now, userLat, userLon);
 
-  // Convert azimuth (-π..π) to degrees (0..360) for canvas
   let sunAngle = ((sunPos.azimuth * 180/Math.PI) + 180) % 360;
   let moonAngle = ((moonPos.azimuth * 180/Math.PI) + 180) % 360;
 
