@@ -3,9 +3,9 @@ const ctx = canvas.getContext("2d");
 
 let orientationMode = "earth";
 let compassHeading = 0;
-let userLat = 0;
-let userLon = 0;
-let horizonFlipped = false; // New: track horizon flip
+let latitude = 0;
+let longitude = 0;
+let horizonFlipped = false;
 
 // Resize canvas
 function resizeCanvas() {
@@ -15,113 +15,126 @@ function resizeCanvas() {
 resizeCanvas();
 window.addEventListener("resize", resizeCanvas);
 
-// Toggle orientation (Earth/body)
-function toggleMode() {
-  orientationMode = orientationMode === "earth" ? "body" : "earth";
-}
+// Get location
+navigator.geolocation.getCurrentPosition(pos => {
+  latitude = pos.coords.latitude;
+  longitude = pos.coords.longitude;
+});
 
-// Flip horizon
-function flipHorizon() {
-  horizonFlipped = !horizonFlipped;
-}
-
-// Compass
-function requestCompass() {
-  if (typeof DeviceOrientationEvent !== "undefined") {
-    window.addEventListener("deviceorientation", (event) => {
-      compassHeading = event.alpha || 0;
+// Enable compass
+function enableCompass() {
+  if (window.DeviceOrientationEvent) {
+    window.addEventListener("deviceorientation", e => {
+      compassHeading = e.alpha || 0;
     });
   }
 }
 
-// Get user location
-if (navigator.geolocation) {
-  navigator.geolocation.getCurrentPosition((pos) => {
-    userLat = pos.coords.latitude;
-    userLon = pos.coords.longitude;
-  });
+// Convert SunCalc azimuth to north-based degrees
+function convertAzimuth(rad) {
+  let deg = rad * 180 / Math.PI;
+  deg = (deg + 180) % 360; // convert from south-based to north-based
+  return deg;
 }
 
-// Compute Sun & Moon angles
-function getSunMoonAngles() {
+// Get positions
+function getPositions() {
   const now = new Date();
-  const sunPos = SunCalc.getPosition(now, userLat, userLon);
-  const moonPos = SunCalc.getMoonPosition(now, userLat, userLon);
 
-  let sunAngle = ((sunPos.azimuth * 180/Math.PI) + 180) % 360;
-  let moonAngle = ((moonPos.azimuth * 180/Math.PI) + 180) % 360;
+  const sun = SunCalc.getPosition(now, latitude, longitude);
+  const moon = SunCalc.getMoonPosition(now, latitude, longitude);
+
+  let sunAz = convertAzimuth(sun.azimuth);
+  let moonAz = convertAzimuth(moon.azimuth);
 
   if (orientationMode === "body") {
-    sunAngle -= compassHeading;
-    moonAngle -= compassHeading;
+    sunAz -= compassHeading;
+    moonAz -= compassHeading;
   }
 
-  return { sunAngle, moonAngle };
-}
+  if (horizonFlipped) {
+    sunAz = (sunAz + 180) % 360;
+    moonAz = (moonAz + 180) % 360;
+  }
 
-// Draw function
-function draw() {
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-  const centerX = canvas.width / 2;
-  const centerY = canvas.height / 2;
-  const radius = canvas.width / 2 - 10;
-
-  // Outer circle
-  ctx.beginPath();
-  ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
-  ctx.strokeStyle = "#555";
-  ctx.lineWidth = 2;
-  ctx.stroke();
-
-  // Horizon line (reversible)
-  ctx.beginPath();
-  const horizonY = centerY + (horizonFlipped ? -0 : 0); // Can adjust if you want vertical flip
-  ctx.moveTo(centerX - radius, centerY);
-  ctx.lineTo(centerX + radius, centerY);
-  ctx.strokeStyle = "#888";
-  ctx.stroke();
-
-  const { sunAngle, moonAngle } = getSunMoonAngles();
-
-  drawHand(centerX, centerY, radius, sunAngle, "orange", 6);
-  drawHand(centerX, centerY, radius, moonAngle, "lightblue", 4);
-
-  requestAnimationFrame(draw);
+  return {
+    sunAz,
+    moonAz,
+    sunAlt: sun.altitude,
+    moonAlt: moon.altitude
+  };
 }
 
 // Draw hand
-function drawHand(cx, cy, radius, angle, color, width) {
-  const rad = (angle - 90) * (Math.PI / 180);
+function drawHand(cx, cy, radius, azimuth, altitude, color, width) {
+  const rad = (azimuth - 90) * Math.PI / 180;
+
   const x = cx + radius * Math.cos(rad);
   const y = cy + radius * Math.sin(rad);
 
   ctx.beginPath();
   ctx.moveTo(cx, cy);
   ctx.lineTo(x, y);
-  ctx.strokeStyle = color;
+
+  // If below horizon, dim
+  ctx.strokeStyle = altitude < 0 ? "#333" : color;
   ctx.lineWidth = width;
   ctx.stroke();
 }
 
-// Start animation after page load
-window.onload = () => {
+// Draw loop
+function draw() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  const cx = canvas.width / 2;
+  const cy = canvas.height / 2;
+  const radius = canvas.width / 2 - 10;
+
+  // Outer circle
+  ctx.beginPath();
+  ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+  ctx.strokeStyle = "#555";
+  ctx.lineWidth = 2;
+  ctx.stroke();
+
+  // Horizon line (3–9)
+  ctx.beginPath();
+  ctx.moveTo(cx - radius, cy);
+  ctx.lineTo(cx + radius, cy);
+  ctx.strokeStyle = "#888";
+  ctx.stroke();
+
+  const { sunAz, moonAz, sunAlt, moonAlt } = getPositions();
+
+  drawHand(cx, cy, radius, sunAz, sunAlt, "orange", 6);
+  drawHand(cx, cy, radius, moonAz, moonAlt, "lightblue", 4);
+
+  requestAnimationFrame(draw);
+}
+
+// Button binding AFTER load
+window.addEventListener("load", () => {
+
+  const modeBtn = document.getElementById("modeBtn");
+  const compassBtn = document.getElementById("compassBtn");
+  const flipBtn = document.getElementById("flipBtn");
+
+  modeBtn.addEventListener("click", () => {
+    orientationMode = orientationMode === "earth" ? "body" : "earth";
+    modeBtn.textContent =
+      orientationMode === "earth"
+        ? "Orientation: Earth"
+        : "Orientation: Body";
+  });
+
+  compassBtn.addEventListener("click", enableCompass);
+
+  flipBtn.addEventListener("click", () => {
+    horizonFlipped = !horizonFlipped;
+  });
+
   draw();
-  requestCompass();
-
-  // Make buttons active
-  const toggleBtn = document.querySelector("button:nth-child(1)");
-  toggleBtn.addEventListener("click", toggleMode);
-
-  const compassBtn = document.querySelector("button:nth-child(2)");
-  compassBtn.addEventListener("click", requestCompass);
-
-  // Add horizon flip button dynamically
-  const flipBtn = document.createElement("button");
-  flipBtn.textContent = "Flip Horizon";
-  flipBtn.addEventListener("click", flipHorizon);
-  document.querySelector(".controls").appendChild(flipBtn);
-};
+});
 
 // Service Worker
 if ("serviceWorker" in navigator) {
