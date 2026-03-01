@@ -7,6 +7,10 @@ let latitude = 0;
 let longitude = 0;
 let horizonFlipped = false;
 
+// Fallback state
+let manualAngle = 0;
+let usingFallback = false;
+
 // Resize canvas
 function resizeCanvas() {
   canvas.width = canvas.offsetWidth;
@@ -16,16 +20,63 @@ resizeCanvas();
 window.addEventListener("resize", resizeCanvas);
 
 // Get location
-navigator.geolocation.getCurrentPosition(pos => {
-  latitude = pos.coords.latitude;
-  longitude = pos.coords.longitude;
-});
+if (navigator.geolocation) {
+  navigator.geolocation.getCurrentPosition(pos => {
+    latitude = pos.coords.latitude;
+    longitude = pos.coords.longitude;
+  });
+}
 
-// Enable compass
+// Fallback enable
+function enableFallbackMode() {
+  if (usingFallback) return;
+  usingFallback = true;
+
+  const controls = document.getElementById("fallback-controls");
+  const warning = document.getElementById("no-sensor-warning");
+  const slider = document.getElementById("manual-rotation");
+
+  if (controls) controls.style.display = "block";
+  if (warning) warning.style.display = "block";
+
+  if (slider) {
+    slider.addEventListener("input", e => {
+      const angle = Number(e.target.value);
+      updateHorizonRotation(angle);
+    });
+  }
+}
+
+// Sensor detection (run once)
+function detectSensors() {
+  const hasOrientation = "DeviceOrientationEvent" in window;
+
+  if (!hasOrientation) {
+    enableFallbackMode();
+    return;
+  }
+
+  let received = false;
+
+  const testHandler = () => {
+    received = true;
+    window.removeEventListener("deviceorientation", testHandler);
+  };
+
+  window.addEventListener("deviceorientation", testHandler);
+
+  setTimeout(() => {
+    if (!received) enableFallbackMode();
+  }, 1000);
+}
+
+detectSensors();
+
+// Enable compass (if available)
 function enableCompass() {
-  if (window.DeviceOrientationEvent) {
+  if (usingFallback) return; // no point on devices without sensors
 
-    // For iOS permission model (safe on Android too)
+  if (window.DeviceOrientationEvent) {
     if (typeof DeviceOrientationEvent.requestPermission === "function") {
       DeviceOrientationEvent.requestPermission()
         .then(permissionState => {
@@ -38,10 +89,15 @@ function enableCompass() {
       window.addEventListener("deviceorientationabsolute", handleOrientation, true);
       window.addEventListener("deviceorientation", handleOrientation, true);
     }
+  } else {
+    // If user taps compass on a device with no support, fall back
+    enableFallbackMode();
   }
 }
 
 function handleOrientation(e) {
+  if (usingFallback) return;
+
   if (e.absolute === true || e.webkitCompassHeading) {
     compassHeading = e.webkitCompassHeading || e.alpha || 0;
   } else {
@@ -51,7 +107,7 @@ function handleOrientation(e) {
 
 // Convert SunCalc azimuth to north-based degrees
 function convertAzimuth(rad) {
-  let deg = rad * 180 / Math.PI;
+  let deg = (rad * 180) / Math.PI;
   deg = (deg + 180) % 360; // convert from south-based to north-based
   return deg;
 }
@@ -66,14 +122,14 @@ function getPositions() {
   let sunAz = convertAzimuth(sun.azimuth);
   let moonAz = convertAzimuth(moon.azimuth);
 
-  if (orientationMode === "body") {
+  if (orientationMode === "body" && !usingFallback) {
     sunAz -= compassHeading;
     moonAz -= compassHeading;
   }
 
   if (horizonFlipped) {
-  sunAz = (360 - sunAz) % 360;
-  moonAz = (360 - moonAz) % 360;
+    sunAz = (360 - sunAz) % 360;
+    moonAz = (360 - moonAz) % 360;
   }
 
   return {
@@ -84,9 +140,47 @@ function getPositions() {
   };
 }
 
+// Horizon rotation from slider
+function updateHorizonRotation(angle) {
+  manualAngle = angle % 360;
+}
+
+// Draw compass rose
+function drawCompassRose(cx, cy, radius) {
+  ctx.save();
+
+  // Rotate only in BODY mode (relative to compass)
+  if (orientationMode === "body" && !usingFallback) {
+    ctx.translate(cx, cy);
+    ctx.rotate((-compassHeading * Math.PI) / 180);
+    ctx.translate(-cx, -cy);
+  }
+
+  const directions = [
+    { label: "N", angle: 0 },
+    { label: "E", angle: 90 },
+    { label: "S", angle: 180 },
+    { label: "W", angle: 270 }
+  ];
+
+  ctx.fillStyle = "white";
+  ctx.font = "16px sans-serif";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+
+  directions.forEach(dir => {
+    const rad = ((dir.angle - 90) * Math.PI) / 180;
+    const x = cx + (radius + 20) * Math.cos(rad);
+    const y = cy + (radius + 20) * Math.sin(rad);
+    ctx.fillText(dir.label, x, y);
+  });
+
+  ctx.restore();
+}
+
 // Draw hand
 function drawHand(cx, cy, radius, azimuth, altitude, color, width) {
-  const rad = (azimuth - 90) * Math.PI / 180;
+  const rad = ((azimuth - 90) * Math.PI) / 180;
 
   const x = cx + radius * Math.cos(rad);
   const y = cy + radius * Math.sin(rad);
@@ -95,7 +189,6 @@ function drawHand(cx, cy, radius, azimuth, altitude, color, width) {
   ctx.moveTo(cx, cy);
   ctx.lineTo(x, y);
 
-  // If below horizon, dim
   ctx.strokeStyle = altitude < 0 ? "#333" : color;
   ctx.lineWidth = width;
   ctx.stroke();
@@ -118,11 +211,17 @@ function draw() {
 
   // Compass Rose
   drawCompassRose(cx, cy, radius);
-  
-  // Horizon line (3–9)
+
+  // Horizon line rotated by manualAngle
+  const horizonRad = (manualAngle * Math.PI) / 180;
+  const hx1 = cx - radius * Math.cos(horizonRad);
+  const hy1 = cy - radius * Math.sin(horizonRad);
+  const hx2 = cx + radius * Math.cos(horizonRad);
+  const hy2 = cy + radius * Math.sin(horizonRad);
+
   ctx.beginPath();
-  ctx.moveTo(cx - radius, cy);
-  ctx.lineTo(cx + radius, cy);
+  ctx.moveTo(hx1, hy1);
+  ctx.lineTo(hx2, hy2);
   ctx.strokeStyle = "#888";
   ctx.stroke();
 
@@ -136,61 +235,34 @@ function draw() {
 
 // Button binding AFTER load
 window.addEventListener("load", () => {
-
   const modeBtn = document.getElementById("modeBtn");
   const compassBtn = document.getElementById("compassBtn");
   const flipBtn = document.getElementById("flipBtn");
 
-  modeBtn.addEventListener("click", () => {
-    orientationMode = orientationMode === "earth" ? "body" : "earth";
-    modeBtn.textContent =
-      orientationMode === "earth"
-        ? "Orientation: Earth"
-        : "Orientation: Body";
-  });
-
-  compassBtn.addEventListener("click", enableCompass);
-
-  flipBtn.addEventListener("click", () => {
-    horizonFlipped = !horizonFlipped;
-  });
-function drawCompassRose(cx, cy, radius) {
-  ctx.save();
-
-  // Rotate only in BODY mode
-  if (orientationMode === "body") {
-    ctx.translate(cx, cy);
-    ctx.rotate(-compassHeading * Math.PI / 180);
-    ctx.translate(-cx, -cy);
+  if (modeBtn) {
+    modeBtn.addEventListener("click", () => {
+      orientationMode = orientationMode === "earth" ? "body" : "earth";
+      modeBtn.textContent =
+        orientationMode === "earth"
+          ? "Orientation: Earth"
+          : "Orientation: Body";
+    });
   }
 
-  const directions = [
-    { label: "N", angle: 0 },
-    { label: "E", angle: 90 },
-    { label: "S", angle: 180 },
-    { label: "W", angle: 270 }
-  ];
+  if (compassBtn) {
+    compassBtn.addEventListener("click", enableCompass);
+  }
 
-  ctx.fillStyle = "white";
-  ctx.font = "16px sans-serif";
-  ctx.textAlign = "center";
-  ctx.textBaseline = "middle";
+  if (flipBtn) {
+    flipBtn.addEventListener("click", () => {
+      horizonFlipped = !horizonFlipped;
+    });
+  }
 
-  directions.forEach(dir => {
-    const rad = (dir.angle - 90) * Math.PI / 180;
-
-    const x = cx + (radius + 20) * Math.cos(rad);
-    const y = cy + (radius + 20) * Math.sin(rad);
-
-    ctx.fillText(dir.label, x, y);
-  });
-
-  ctx.restore();
-    }
   draw();
 });
 
 // Service Worker
 if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.register("service-worker.js");
-}
+  navigator.serviceWorker.register("./service-worker.js");
+        }
