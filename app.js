@@ -116,6 +116,9 @@ function draw() {
   ctx.lineWidth = 2;
   ctx.stroke();
 
+  // Compass Rose
+  drawCompassRose(cx, cy, radius);
+  
   // Horizon line (3–9)
   ctx.beginPath();
   ctx.moveTo(cx - radius, cy);
