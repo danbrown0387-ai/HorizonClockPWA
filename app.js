@@ -24,9 +24,28 @@ navigator.geolocation.getCurrentPosition(pos => {
 // Enable compass
 function enableCompass() {
   if (window.DeviceOrientationEvent) {
-    window.addEventListener("deviceorientation", e => {
-      compassHeading = e.alpha || 0;
-    });
+
+    // For iOS permission model (safe on Android too)
+    if (typeof DeviceOrientationEvent.requestPermission === "function") {
+      DeviceOrientationEvent.requestPermission()
+        .then(permissionState => {
+          if (permissionState === "granted") {
+            window.addEventListener("deviceorientation", handleOrientation);
+          }
+        })
+        .catch(console.error);
+    } else {
+      window.addEventListener("deviceorientationabsolute", handleOrientation, true);
+      window.addEventListener("deviceorientation", handleOrientation, true);
+    }
+  }
+}
+
+function handleOrientation(e) {
+  if (e.absolute === true || e.webkitCompassHeading) {
+    compassHeading = e.webkitCompassHeading || e.alpha || 0;
+  } else {
+    compassHeading = e.alpha || 0;
   }
 }
 
