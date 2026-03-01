@@ -41,13 +41,12 @@ function enableFallbackMode() {
 
   if (slider) {
     slider.addEventListener("input", e => {
-      const angle = Number(e.target.value);
-      updateHorizonRotation(angle);
+      manualAngle = Number(e.target.value);
     });
   }
 }
 
-// Sensor detection (run once)
+// Sensor detection
 function detectSensors() {
   const hasOrientation = "DeviceOrientationEvent" in window;
 
@@ -72,9 +71,9 @@ function detectSensors() {
 
 detectSensors();
 
-// Enable compass (if available)
+// Enable compass
 function enableCompass() {
-  if (usingFallback) return; // no point on devices without sensors
+  if (usingFallback) return;
 
   if (window.DeviceOrientationEvent) {
     if (typeof DeviceOrientationEvent.requestPermission === "function") {
@@ -90,7 +89,6 @@ function enableCompass() {
       window.addEventListener("deviceorientation", handleOrientation, true);
     }
   } else {
-    // If user taps compass on a device with no support, fall back
     enableFallbackMode();
   }
 }
@@ -108,7 +106,7 @@ function handleOrientation(e) {
 // Convert SunCalc azimuth to north-based degrees
 function convertAzimuth(rad) {
   let deg = (rad * 180) / Math.PI;
-  deg = (deg + 180) % 360; // convert from south-based to north-based
+  deg = (deg + 180) % 360;
   return deg;
 }
 
@@ -140,16 +138,10 @@ function getPositions() {
   };
 }
 
-// Horizon rotation from slider
-function updateHorizonRotation(angle) {
-  manualAngle = angle % 360;
-}
-
-// Draw compass rose
+// Compass rose
 function drawCompassRose(cx, cy, radius) {
   ctx.save();
 
-  // Rotate only in BODY mode (relative to compass)
   if (orientationMode === "body" && !usingFallback) {
     ctx.translate(cx, cy);
     ctx.rotate((-compassHeading * Math.PI) / 180);
@@ -209,7 +201,6 @@ function draw() {
   ctx.lineWidth = 2;
   ctx.stroke();
 
-  // Compass Rose
   drawCompassRose(cx, cy, radius);
 
   // Horizon line rotated by manualAngle
@@ -233,7 +224,7 @@ function draw() {
   requestAnimationFrame(draw);
 }
 
-// Button binding AFTER load
+// Buttons
 window.addEventListener("load", () => {
   const modeBtn = document.getElementById("modeBtn");
   const compassBtn = document.getElementById("compassBtn");
@@ -249,15 +240,8 @@ window.addEventListener("load", () => {
     });
   }
 
-  if (compassBtn) {
-    compassBtn.addEventListener("click", enableCompass);
-  }
-
-  if (flipBtn) {
-    flipBtn.addEventListener("click", () => {
-      horizonFlipped = !horizonFlipped;
-    });
-  }
+  if (compassBtn) compassBtn.addEventListener("click", enableCompass);
+  if (flipBtn) flipBtn.addEventListener("click", () => (horizonFlipped = !horizonFlipped));
 
   draw();
 });
@@ -265,4 +249,4 @@ window.addEventListener("load", () => {
 // Service Worker
 if ("serviceWorker" in navigator) {
   navigator.serviceWorker.register("./service-worker.js");
-        }
+      }
