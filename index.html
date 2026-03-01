@@ -5,21 +5,47 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Horizon Clock</title>
 
-  <link rel="manifest" href="manifest.json" />
-  <link rel="stylesheet" href="style.css" />
+  <!-- Correct GitHub Pages paths -->
+  <link rel="manifest" href="./manifest.json" />
+  <link rel="stylesheet" href="./style.css" />
+
+  <!-- SunCalc library -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/suncalc/1.9.0/suncalc.min.js"></script>
+
   <meta name="theme-color" content="#000000" />
 </head>
 
 <body>
+
 <div class="controls">
   <button id="modeBtn">Orientation: Earth</button>
   <button id="compassBtn">Enable Compass</button>
   <button id="flipBtn">Flip Horizon</button>
 </div>
-  
+
 <canvas id="clockCanvas"></canvas>
-  
-  <script src="app.js"></script>
+
+<!-- Fallback Controls for Devices Without Sensors -->
+<div id="fallback-controls" style="display:none; margin-top:20px; padding: 0 20px;">
+  <label for="manual-rotation" style="color:white; font-size:14px;">
+    Rotate Horizon
+  </label>
+  <input 
+    type="range" 
+    id="manual-rotation" 
+    min="0" 
+    max="360" 
+    value="0" 
+    style="width:100%;"
+  >
+</div>
+
+<div id="no-sensor-warning" 
+     style="display:none; color:#ffcc66; margin-top:10px; font-size:13px; text-align:center;">
+  Your device does not support orientation sensors.<br>
+  Use the slider to rotate the horizon manually.
+</div>
+
+<script src="./app.js"></script>
 </body>
 </html>
