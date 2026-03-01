@@ -72,8 +72,8 @@ function getPositions() {
   }
 
   if (horizonFlipped) {
-    sunAz = (sunAz + 180) % 360;
-    moonAz = (moonAz + 180) % 360;
+  sunAz = (360 - sunAz) % 360;
+  moonAz = (360 - moonAz) % 360;
   }
 
   return {
