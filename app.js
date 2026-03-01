@@ -151,7 +151,39 @@ window.addEventListener("load", () => {
   flipBtn.addEventListener("click", () => {
     horizonFlipped = !horizonFlipped;
   });
+function drawCompassRose(cx, cy, radius) {
+  ctx.save();
 
+  // Rotate only in BODY mode
+  if (orientationMode === "body") {
+    ctx.translate(cx, cy);
+    ctx.rotate(-compassHeading * Math.PI / 180);
+    ctx.translate(-cx, -cy);
+  }
+
+  const directions = [
+    { label: "N", angle: 0 },
+    { label: "E", angle: 90 },
+    { label: "S", angle: 180 },
+    { label: "W", angle: 270 }
+  ];
+
+  ctx.fillStyle = "white";
+  ctx.font = "16px sans-serif";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+
+  directions.forEach(dir => {
+    const rad = (dir.angle - 90) * Math.PI / 180;
+
+    const x = cx + (radius + 20) * Math.cos(rad);
+    const y = cy + (radius + 20) * Math.sin(rad);
+
+    ctx.fillText(dir.label, x, y);
+  });
+
+  ctx.restore();
+    }
   draw();
 });
 
