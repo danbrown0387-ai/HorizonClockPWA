@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Hyperbolic Clock Mandala</title>
+<style>
+body{
+  margin:0;
+  background:black;
+}
+svg{
+  display:block;
+  margin:auto;
+}
+</style>
+</head>
+
+<body>
+
+<svg width="600" height="600" viewBox="-300 -300 600 600">
+
+<!-- outer circle -->
+<circle cx="0" cy="0" r="250" stroke="white" fill="none"/>
+
+<!-- center -->
+<circle cx="0" cy="0" r="6" fill="cyan"/>
+
+<script>
+
+let svg = document.querySelector("svg");
+
+let ticks = 50; // 7.2° divisions
+
+for(let i=0;i<ticks;i++){
+
+  let angle = i * (360/ticks) * Math.PI/180;
+
+  let x1 = 0;
+  let y1 = 0;
+
+  let x2 = 250*Math.cos(angle);
+  let y2 = 250*Math.sin(angle);
+
+  let line = document.createElementNS("http://www.w3.org/2000/svg","line");
+
+  line.setAttribute("x1",x1);
+  line.setAttribute("y1",y1);
+  line.setAttribute("x2",x2);
+  line.setAttribute("y2",y2);
+
+  line.setAttribute("stroke","cyan");
+  line.setAttribute("stroke-width","1");
+
+  svg.appendChild(line);
+}
+
+</script>
+
+</svg>
+
+</body>
+</html>
