@@ -2,14 +2,14 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Hyperbola - Touch Optimized (Larger View 2)</title>
+<title>Mirrored Hyperbolic Curve</title>
 <style>
-body {
-  margin: 0;
-  background: black;
+body{
+  margin:0;
+  background:black;
 }
-canvas {
-  display: block;
+canvas{
+  display:block;
 }
 </style>
 </head>
@@ -18,114 +18,81 @@ canvas {
 <canvas id="c"></canvas>
 
 <script>
-var canvas = document.getElementById("c");
-var ctx = canvas.getContext("2d");
+const canvas = document.getElementById("c");
+const ctx = canvas.getContext("2d");
 
-function resize() {
-  canvas.width = window.innerWidth;
-  canvas.height = window.innerHeight;
-}
-resize();
+canvas.width = window.innerWidth;
+canvas.height = window.innerHeight;
 
-var zoom = 85;      // larger default zoom
-var offsetX = 0;
-var offsetY = -40;  // slightly higher for small screens
+const W = canvas.width;
+const H = canvas.height;
 
-var dragging = false;
-var lastX = 0;
-var lastY = 0;
+const scale = 60; // zoom level
 
-canvas.addEventListener("touchstart", function(e) {
-  var t = e.touches[0];
-  dragging = true;
-  lastX = t.clientX;
-  lastY = t.clientY;
-});
+function drawAxes(){
+  ctx.strokeStyle="white";
+  ctx.lineWidth=1;
 
-canvas.addEventListener("touchmove", function(e) {
-  if (!dragging) return;
-  var t = e.touches[0];
-
-  offsetX += (t.clientX - lastX) * 0.8;
-  offsetY += (t.clientY - lastY) * 0.8;
-
-  lastX = t.clientX;
-  lastY = t.clientY;
-
-  draw();
-});
-
-canvas.addEventListener("touchend", function() {
-  dragging = false;
-});
-
-function drawAxes() {
-  var W = canvas.width;
-  var H = canvas.height;
-
-  ctx.strokeStyle = "rgba(255,255,255,0.3)";
-  ctx.lineWidth = 1;
-
+  // x axis
   ctx.beginPath();
-  ctx.moveTo(0, H/2 + offsetY);
-  ctx.lineTo(W, H/2 + offsetY);
+  ctx.moveTo(0,H/2);
+  ctx.lineTo(W,H/2);
   ctx.stroke();
 
+  // y axis
   ctx.beginPath();
-  ctx.moveTo(W/2 + offsetX, 0);
-  ctx.lineTo(W/2 + offsetX, H);
+  ctx.moveTo(W/2,0);
+  ctx.lineTo(W/2,H);
   ctx.stroke();
 }
 
-function drawHyperbola() {
-  var W = canvas.width;
-  var H = canvas.height;
-  var cx = W/2 + offsetX;
-  var cy = H/2 + offsetY;
+function drawCurve(){
 
-  ctx.strokeStyle = "#00ffcc";
-  ctx.lineWidth = 2;
-
+  ctx.strokeStyle="cyan";
+  ctx.lineWidth=2;
   ctx.beginPath();
-  var started = false;
-  for (var x = 0.1; x < 5; x += 0.02) {
-    var y = 1 / x;
-    var px = cx + x * zoom;
-    var py = cy - y * zoom;
 
-    if (!started) {
-      ctx.moveTo(px, py);
-      started = true;
-    } else {
-      ctx.lineTo(px, py);
-    }
+  for(let y=-10; y<=10; y+=0.01){
+
+    let x = Math.exp(-Math.abs(y));
+
+    let px = W/2 + x*scale;
+    let py = H/2 - y*scale;
+
+    if(y===-10) ctx.moveTo(px,py);
+    else ctx.lineTo(px,py);
   }
+
   ctx.stroke();
 
+  // mirror to left side
   ctx.beginPath();
-  started = false;
-  for (var x2 = -0.1; x2 > -5; x2 -= 0.02) {
-    var y2 = 1 / x2;
-    var px2 = cx + x2 * zoom;
-    var py2 = cy - y2 * zoom;
 
-    if (!started) {
-      ctx.moveTo(px2, py2);
-      started = true;
-    } else {
-      ctx.lineTo(px2, py2);
-    }
+  for(let y=-10; y<=10; y+=0.01){
+
+    let x = -Math.exp(-Math.abs(y));
+
+    let px = W/2 + x*scale;
+    let py = H/2 - y*scale;
+
+    if(y===-10) ctx.moveTo(px,py);
+    else ctx.lineTo(px,py);
   }
+
   ctx.stroke();
 }
 
-function draw() {
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
+function draw(){
+
+  ctx.fillStyle="black";
+  ctx.fillRect(0,0,W,H);
+
   drawAxes();
-  drawHyperbola();
+  drawCurve();
 }
 
 draw();
 </script>
+
 </body>
-  </html>
+</html>
